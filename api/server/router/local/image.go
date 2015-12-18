@@ -493,6 +493,65 @@ func (s *router) postImagesTag(ctx context.Context, w http.ResponseWriter, r *ht
 	return nil
 }
 
+func (s *router) postImagesTagManifest(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	if err := httputils.ParseForm(r); err != nil {
+		return err
+	}
+	var (
+		image  = r.Form.Get("fromImage")
+		tag    = r.Form.Get("tag")
+		newTag = r.Form.Get("newTag")
+	)
+
+	authEncoded := r.Header.Get("X-Registry-Auth")
+	authConfig := &cliconfig.AuthConfig{}
+	if authEncoded != "" {
+		authJSON := base64.NewDecoder(base64.URLEncoding, strings.NewReader(authEncoded))
+		if err := json.NewDecoder(authJSON).Decode(authConfig); err != nil {
+			// for a pull it is not an error if no auth was given
+			// to increase compatibility with the existing api it is defaulting to be empty
+			authConfig = &cliconfig.AuthConfig{}
+		}
+	}
+
+	var (
+		err    error
+		output = ioutils.NewWriteFlusher(w)
+	)
+	defer output.Close()
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if tag == "" {
+		image, tag = parsers.ParseRepositoryTag(image)
+	}
+	metaHeaders := map[string][]string{}
+	for k, v := range r.Header {
+		if strings.HasPrefix(k, "X-Meta-") {
+			metaHeaders[k] = v
+		}
+	}
+
+	imagePullConfig := &graph.ImagePullConfig{
+		MetaHeaders: metaHeaders,
+		AuthConfig:  authConfig,
+		OutStream:   output,
+	}
+
+	err = s.daemon.RetagManifest(image, tag, newTag, imagePullConfig)
+
+	if err != nil {
+		if !output.Flushed() {
+			return err
+		}
+		sf := streamformatter.NewJSONStreamFormatter()
+		output.Write(sf.FormatError(err))
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	return nil
+}
+
 func (s *router) getImagesSearch(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
 	if err := httputils.ParseForm(r); err != nil {
 		return err

@@ -1029,6 +1029,13 @@ func (daemon *Daemon) TagImage(repoName, tag, imageName string, force bool) erro
 	return daemon.repositories.Tag(repoName, tag, imageName, force)
 }
 
+// RetagManifest initiates a pull operation only on the manifest. image is the repository name to pull, and
+// tag may be either empty, or indicate a specific tag to pull.
+func (daemon *Daemon) RetagManifest(image string, tag string, newTag string, imagePullConfig *graph.ImagePullConfig) error {
+	fmt.Println("In daemon.RetagManifest")
+	return daemon.repositories.RetagManifest(image, tag, newTag, imagePullConfig)
+}
+
 // PullImage initiates a pull operation. image is the repository name to pull, and
 // tag may be either empty, or indicate a specific tag to pull.
 func (daemon *Daemon) PullImage(image string, tag string, imagePullConfig *graph.ImagePullConfig) error {
