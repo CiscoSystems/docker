@@ -11,7 +11,7 @@ import (
 	"github.com/docker/docker/registry"
 )
 
-// CmdTag tags a manifest on a remote registry.
+// CmdTagmani tags a manifest on a remote registry.
 //
 // Usage: docker tagmani [OPTIONS] [REGISTRYHOST/][USERNAME/]IMAGENAME[:TAG|@DIGEST] [TAG]
 func (cli *DockerCli) CmdTagmani(args ...string) error {

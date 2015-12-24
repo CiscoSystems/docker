@@ -11,27 +11,22 @@ import (
 	"github.com/docker/docker/utils"
 )
 
-// Puller is an interface that abstracts pulling for different API versions.
+// ManifestPuller is an interface that abstracts pulling manifests for different API versions.
 type ManifestPuller interface {
 	// Pull tries to pull the image referenced by `tag`
 	// Pull returns an error if any, as well as a boolean that determines whether to retry Pull on the next configured endpoint.
 	//
-	// TODO(tiborvass): have Pull() take a reference to repository + tag, so that the puller itself is repository-agnostic.
 	Pull(tag string) (manifest *manifest.Manifest, fallback bool, err error)
 }
 
-// Pusher is an interface that abstracts pushing for different API versions.
+// ManifestPusher is an interface that abstracts pushing manifests for different API versions.
 type ManifestPusher interface {
-	// Pull tries to pull the image referenced by `tag`
-	// Pull returns an error if any, as well as a boolean that determines whether to retry Pull on the next configured endpoint.
-	//
-	// TODO(tiborvass): have Pull() take a reference to repository + tag, so that the puller itself is repository-agnostic.
 	Push(manifest *manifest.Manifest) (fallback bool, err error)
 }
 
-// NewPuller returns a Puller interface that will pull from either a v1 or v2
+// NewManifestPuller returns a Puller interface that will pull from v2
 // registry. The endpoint argument contains a Version field that determines
-// whether a v1 or v2 puller will be created. The other parameters are passed
+// whether v2 puller will be created. The other parameters are passed
 // through to the underlying puller implementation for use during the actual
 // pull operation.
 func NewManifestPuller(s *TagStore, endpoint registry.APIEndpoint, repoInfo *registry.RepositoryInfo, imagePullConfig *ImagePullConfig, sf *streamformatter.StreamFormatter) (ManifestPuller, error) {
@@ -48,9 +43,9 @@ func NewManifestPuller(s *TagStore, endpoint registry.APIEndpoint, repoInfo *reg
 	return nil, fmt.Errorf("unknown version %d for registry %s", endpoint.Version, endpoint.URL)
 }
 
-// NewPusher creates a new Pusher interface that will push to either a v1 or v2
+// NewManifestPusher creates a new Pusher interface that will push to a v2
 // registry. The endpoint argument contains a Version field that determines
-// whether a v1 or v2 pusher will be created. The other parameters are passed
+// whether a v2 pusher will be created. The other parameters are passed
 // through to the underlying pusher implementation for use during the actual
 // push operation.
 func (s *TagStore) NewManifestPusher(endpoint registry.APIEndpoint, repoInfo *registry.RepositoryInfo, imagePushConfig *ImagePushConfig, sf *streamformatter.StreamFormatter) (ManifestPusher, error) {
@@ -67,12 +62,12 @@ func (s *TagStore) NewManifestPusher(endpoint registry.APIEndpoint, repoInfo *re
 	return nil, fmt.Errorf("unknown version %d for registry %s", endpoint.Version, endpoint.URL)
 }
 
+//RetagManifest pulls retags and pushes the new tag to the manifest
 func (s *TagStore) RetagManifest(image string, tag string, newTag string, imagePullConfig *ImagePullConfig) error {
-	fmt.Println("In graph.RetagManifest")
-	fmt.Printf("Image: %s\n", image)
-	fmt.Printf("Tag: %s\n", tag)
-	fmt.Printf("NewTag: %s\n", newTag)
-	fmt.Printf("imagePullConfig: %s\n", imagePullConfig)
+	logrus.Debugf("Image: %s\n", image)
+	logrus.Debugf("Tag: %s\n", tag)
+	logrus.Debugf("NewTag: %s\n", newTag)
+	logrus.Debugf("imagePullConfig: %s\n", imagePullConfig)
 
 	var sf = streamformatter.NewJSONStreamFormatter()
 
@@ -81,7 +76,7 @@ func (s *TagStore) RetagManifest(image string, tag string, newTag string, imageP
 	if err != nil {
 		return err
 	}
-	fmt.Printf("repoInfo: %s\n", repoInfo)
+	logrus.Debugf("repoInfo: %s\n", repoInfo)
 	// makes sure name is not empty or `scratch`
 	if err := validateRepoName(repoInfo.LocalName); err != nil {
 		return err
@@ -96,7 +91,7 @@ func (s *TagStore) RetagManifest(image string, tag string, newTag string, imageP
 	if tag != "" {
 		logName = utils.ImageReference(logName, tag)
 	}
-	fmt.Printf("logName: %s\n", logName)
+	logrus.Debugf("logName: %s\n", logName)
 	var (
 		lastErr error
 
@@ -138,13 +133,13 @@ func (s *TagStore) RetagManifest(image string, tag string, newTag string, imageP
 			return err
 
 		}
-		fmt.Printf("RetagManifest - verifiedManifest.Name: %s\n", verifiedManifest.Name)
-		fmt.Printf("RetagManifest - verifiedManifest.Tag: %s\n", verifiedManifest.Tag)
-		fmt.Printf("RetagManifest - verifiedManifest.Architecture: %s\n", verifiedManifest.Architecture)
-		fmt.Printf("RetagManifest - verifiedManifest.FSLayers: %s\n", verifiedManifest.FSLayers)
-		fmt.Printf("RetagManifest - verifiedManifest.History: %s\n", verifiedManifest.History)
+		logrus.Debugf("RetagManifest - verifiedManifest.Name: %s\n", verifiedManifest.Name)
+		logrus.Debugf("RetagManifest - verifiedManifest.Tag: %s\n", verifiedManifest.Tag)
+		logrus.Debugf("RetagManifest - verifiedManifest.Architecture: %s\n", verifiedManifest.Architecture)
+		logrus.Debugf("RetagManifest - verifiedManifest.FSLayers: %s\n", verifiedManifest.FSLayers)
+		logrus.Debugf("RetagManifest - verifiedManifest.History: %s\n", verifiedManifest.History)
 		verifiedManifest.Tag = newTag
-		fmt.Printf("RetagManifest - Changed verifiedManifest.Tag: %s\n", verifiedManifest.Tag)
+		logrus.Debugf("RetagManifest - Changed verifiedManifest.Tag: %s\n", verifiedManifest.Tag)
 
 		endpoints, err := s.registryService.LookupPushEndpoints(repoInfo.CanonicalName)
 		if err != nil {

@@ -34,8 +34,6 @@ type v2ManifestPusher struct {
 }
 
 func (p *v2ManifestPuller) Pull(tag string) (verifiedManifest *manifest.Manifest, fallback bool, err error) {
-	fmt.Println("v2ManifestPuller.Pull")
-	// TODO(tiborvass): was ReceiveTimeout
 	p.repo, err = NewV2Repository(p.repoInfo, p.endpoint, p.config.MetaHeaders, p.config.AuthConfig, "pull")
 	if err != nil {
 		logrus.Warnf("Error getting v2 registry: %v", err)
@@ -57,7 +55,6 @@ func (p *v2ManifestPuller) Pull(tag string) (verifiedManifest *manifest.Manifest
 }
 
 func (p *v2ManifestPuller) pullV2Manifest(tag string) (verifiedManifest *manifest.Manifest, err error) {
-	fmt.Println("v2ManifestPuller.pullV2Manifest")
 	var tags []string
 	taggedName := p.repoInfo.LocalName
 	if len(tag) > 0 {
@@ -95,7 +92,6 @@ func (p *v2ManifestPuller) pullV2Manifest(tag string) (verifiedManifest *manifes
 
 	for _, tag := range tags {
 		// pulledNew is true if either new layers were downloaded OR if existing images were newly tagged
-		// TODO(tiborvass): should we change the name of `layersDownload`? What about message in WriteStatus?
 		pulledNew, pulledManifest, err := p.pullV2ManifestTag(broadcaster, tag, taggedName)
 		if err != nil {
 			return nil, err
@@ -124,12 +120,12 @@ func (p *v2ManifestPuller) pullV2ManifestTag(out io.Writer, tag, taggedName stri
 	if unverifiedManifest == nil {
 		return false, nil, fmt.Errorf("image manifest does not exist for tag %q", tag)
 	}
-	fmt.Printf("unverifiedManifest: %s\n", unverifiedManifest)
+	logrus.Debugf("unverifiedManifest: %s\n", unverifiedManifest)
 	verifiedManifest, err = verifyManifest(unverifiedManifest, tag)
 	if err != nil {
 		return false, nil, err
 	}
-	fmt.Printf("verifiedManifest: %s\n", verifiedManifest)
+	logrus.Debugf("verifiedManifest: %s\n", verifiedManifest)
 
 	// remove duplicate layers and check parent chain validity
 	err = fixManifestLayers(verifiedManifest)
@@ -141,12 +137,11 @@ func (p *v2ManifestPuller) pullV2ManifestTag(out io.Writer, tag, taggedName stri
 	if err != nil {
 		return false, nil, err
 	}
-	fmt.Printf("manifestDigest: %s\n", manifestDigest)
+	logrus.Debugf("manifestDigest: %s\n", manifestDigest)
 
 	return true, verifiedManifest, nil
 }
 func (p *v2ManifestPusher) Push(verifiedManifest *manifest.Manifest) (fallback bool, err error) {
-	fmt.Println("v2ManifestPusher.Push")
 	p.repo, err = NewV2Repository(p.repoInfo, p.endpoint, p.config.MetaHeaders, p.config.AuthConfig, "push", "pull")
 	if err != nil {
 		logrus.Debugf("Error getting v2 registry: %v", err)
@@ -156,7 +151,6 @@ func (p *v2ManifestPusher) Push(verifiedManifest *manifest.Manifest) (fallback b
 }
 
 func (p *v2ManifestPusher) pushV2Manifest(m *manifest.Manifest) error {
-	fmt.Println("v2ManifestPusher.PushV2Manifest")
 	localName := p.repoInfo.LocalName
 	if _, found := p.poolAdd("push", localName); found {
 		return fmt.Errorf("push or pull %s is already in progress", localName)
