@@ -1,5 +1,0 @@
-[gerrit]
-host=cloud-review.cisco.com
-project=redstone/docker
-defaultbranch=redstone/v1.9.1
-
